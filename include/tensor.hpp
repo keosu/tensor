@@ -9,6 +9,7 @@
 #include <ostream>
 #include <vector>
 
+namespace st {
 
 /*********************
  * initializer_shape *
@@ -126,8 +127,10 @@ class Shape {
     }
   }
   int operator[](int index) {
-    if (index < 0 || index > rank())
+    if (index < -rank() || index >= rank())
       throw(std::out_of_range("invalid shape index"));
+    if(index < 0)
+      index += rank();
     return dim_[index];
   }
 
@@ -156,8 +159,8 @@ class Shape {
 template <typename T>
 class Tensor {
  public:
-  Tensor(Shape &&sh) : shape_(sh) { data_.resize(sh.size(), 0); }
-  // Tensor(const std::initializer_list<std::initializer_list<T> > &list);
+  Tensor(Shape &sh) : shape_(sh) { data_.resize(sh.size(), 0); } 
+  Tensor(Shape &&sh) : shape_(sh) { data_.resize(sh.size(), 0); } 
   Tensor(const nested_initializer_list_t<T, 0> list);
   Tensor(const nested_initializer_list_t<T, 1> list);
   Tensor(const nested_initializer_list_t<T, 2> list);
@@ -167,28 +170,26 @@ class Tensor {
 
   Shape &shape() { return shape_; }
   T &operator[](int index) {
-    if (index < 0 || index > shape_.size())
+    if (index < -shape_.size() || index >= shape_.size())
       throw(std::out_of_range("Tensor index out of range " +
                               std::to_string(index)));
+    if(index < 0)
+      index = shape_.size() + index;
     return data_[index];
   }
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
 
   friend std::ostream &operator<<(std::ostream &out, Tensor &tensor) {
-    out << "Tensor[\n";
-    if (tensor.shape().rank() == 1) {
-      std::copy(tensor.begin(), tensor.end(),
-                std::ostream_iterator<T>(out, ", "));
-    } else if (tensor.shape().rank() == 2) {
-      auto dim2 = tensor.shape()[1];
-      for (auto i = 0; i < tensor.shape()[0]; i++) {
-        out << "  [";
-        std::copy(&tensor[dim2 * i], &tensor[dim2 * (i + 1)],
-                  std::ostream_iterator<T>(out, ", "));
-        out << "]\n";
-      }
-    }
+    auto shape = tensor.shape();
+    out << "Tensor: " << shape << " [\n";
+    auto p = tensor.begin();
+    while(p != tensor.end()) { 
+      out << "  ";
+      std::copy(p, p+shape[-1], std::ostream_iterator<T>(out, ", "));
+      out << "\n";
+      p+= shape[-1];
+    } 
     out << "]";
     return out;
   }
@@ -234,4 +235,42 @@ Tensor<T>::Tensor(const nested_initializer_list_t<T, 5> list) {
   data_.resize(shape_.size(), 0);
   nested_copy(data_.begin(),list); 
 }
+
+/**
+ * generate an all-zero tensor with given shape
+ */ 
+template<typename T>
+Tensor<T> zero(Shape&& sh) {
+  return Tensor<T>(sh);
+}
+/**
+ * generate an all-one tensor with given shape
+ */ 
+template<typename T>
+Tensor<T> one(Shape&& sh) {
+  auto t = Tensor<T>(sh);
+  std::fill(t.begin(),t.end(),1);
+  return t;
+}
+
+template<typename T>
+Tensor<T> eye(int n) {
+  auto t = Tensor<T>(Shape{n,n});
+  for(int i=0;i< n*n;i+=n+1)
+    t[i] = 1; 
+  return t;
+}
+
+template<typename T>
+Tensor<T> matmul(Tensor<T> & a, Tensor<T>& b, bool transpose = false) {
+  static_assert(a.shape().rank() == 2 && b.shape().rank() == 2); 
+  static_assert(a.shape()[1] == b.shape()[transpose?1:0]); 
+
+  Tensor<T> t{a.shape()[0], b.shape()[transpose?0:1]};
  
+  //todo 
+  return t;
+}
+
+
+};// end of namespace st

@@ -3,8 +3,10 @@
 
 #include "tensor.hpp"
 
-int main(void) {
-  nested_initializer_list_t<int,2> l{
+using namespace st;
+
+void test_innertype() {
+ nested_initializer_list_t<int,2> l{
       {1, 2, 3,5},
       {4, 5, 6,3},
       {7, 8, 9,4},
@@ -20,8 +22,9 @@ int main(void) {
   Shape y(sh);
 
   std::cout << "x,y " << x << " " << y << std::endl;
+}
 
-  // Tensor<int> t(std::move(sh));
+int main(void) { 
 
   Tensor<int> t1{ {
       {1, 2, 3, 123},
@@ -32,10 +35,15 @@ int main(void) {
 
     Tensor<int> t2{ 1,2,4,5 };
 
+  Shape sh{4,5};
+  auto ze = st::zero<int>({7,4});
+  auto one = st::one<int>({3,4,5});
 
-  std::cout << t2 << std::endl;
-   std::cout << t1 << std::endl;
-   std::cout << t1.shape() << std::endl;
+  auto eye = st::eye<int>(5);
 
+  std::cout << ze << std::endl;
+   std::cout << one << std::endl;
+   std::cout << eye << std::endl;
+ 
   return 0;
 }
