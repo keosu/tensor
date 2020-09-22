@@ -263,8 +263,8 @@ Tensor<T> eye(int n) {
 
 template<typename T>
 Tensor<T> matmul(Tensor<T> & a, Tensor<T>& b, bool transpose = false) {
-  static_assert(a.shape().rank() == 2 && b.shape().rank() == 2); 
-  static_assert(a.shape()[1] == b.shape()[transpose?1:0]); 
+//   static_assert(a.shape().rank() == 2 && b.shape().rank() == 2); 
+//   static_assert(a.shape()[1] == b.shape()[transpose?1:0]); 
 
   Tensor<T> t{a.shape()[0], b.shape()[transpose?0:1]};
  
