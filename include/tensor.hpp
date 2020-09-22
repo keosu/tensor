@@ -5,39 +5,87 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <numeric>
 #include <ostream>
 #include <vector>
- 
+
+
+/*********************
+ * initializer_shape *
+ *********************/
+template <std::size_t I>
+struct initializer_shape_impl {
+  template <class T>
+  static constexpr std::size_t value(T t) {
+    return t.size() == 0 ? 0 : initializer_shape_impl<I - 1>::value(*t.begin());
+  }
+};
+
+template <>
+struct initializer_shape_impl<0> {
+  template <class T>
+  static constexpr std::size_t value(T t) {
+    return t.size();
+  }
+};
+
+template <class R, class U, std::size_t... I>
+constexpr R initializer_shape(U t, std::index_sequence<I...>) {
+  using size_type = typename R::value_type;
+  return {size_type(initializer_shape_impl<I>::value(t))...};
+}
+/*********************
+ * initializer_depth *
+ *********************/
+template <class U>
+struct initializer_depth {
+  static constexpr std::size_t value = 0;
+};
+
+template <class T>
+struct initializer_depth<std::initializer_list<T>> {
+  static constexpr std::size_t value = 1 + initializer_depth<T>::value;
+};
+
+/*********************
+ * initializer_shape *
+ *********************/
+template <class R, class T>
+constexpr R deduce_shape(T t) {
+  return initializer_shape<R, decltype(t)>(
+      t, std::make_index_sequence<
+             initializer_depth<decltype(t)>::value>());
+}
 
 /***************************
  * nested_initializer_list *
  ***************************/
 template <class T, std::size_t I>
-struct nested_initializer_list  {
-    using type = std::initializer_list<typename nested_initializer_list<T, I - 1>::type>;
-}; 
+struct nested_initializer_list {
+  using type =
+      std::initializer_list<typename nested_initializer_list<T, I - 1>::type>;
+};
 template <class T>
 struct nested_initializer_list<T, 0> {
-    using type = T;
+  using type = T;
 };
 
 template <class T, std::size_t I>
-using nested_initializer_list_t = typename nested_initializer_list<T, I>::type; 
+using nested_initializer_list_t = typename nested_initializer_list<T, I>::type;
 
 /******************************
  * nested_copy implementation *
- ******************************/ 
+ ******************************/
 template <class T, class S>
-inline void nested_copy(T&& iter, const S& s)  {
-    *iter++ = s;
-} 
-template <class T, class S>
-inline void nested_copy(T&& iter, std::initializer_list<S> s) {
-    for (auto it = s.begin(); it != s.end(); ++it) {
-        nested_copy(std::forward<T>(iter), *it);
-    }
+inline void nested_copy(T &&iter, const S &s) {
+  *iter++ = s;
 }
-
+template <class T, class S>
+inline void nested_copy(T &&iter, std::initializer_list<S> s) {
+  for (auto it = s.begin(); it != s.end(); ++it) {
+    nested_copy(std::forward<T>(iter), *it);
+  }
+}
 
 /**
  * TreeNode class
@@ -52,43 +100,40 @@ struct TreeNode {
   TreeNode(std::initializer_list<TreeNode> v_) : if_leaf(false), v(v_) {}
 };
 
-
 /**
  * Shape class
  */
 class Shape {
  public:
-  Shape() { std::cout << "==> Shape empty constructor" << std::endl; }
+  using value_type = int;
+  Shape() = default;  // scalar
   Shape(const Shape &sh) {
-    rank_ = sh.rank();
-    size_ = sh.size();
-    dim_ = new int[sh.rank()];
+    dim_.resize(sh.rank());
+    std::vector<int> vec = sh.get();
+    dim_.swap(vec);
   }
   Shape &operator=(const Shape &sh) {
-    rank_ = sh.rank();
-    size_ = sh.size();
-    dim_ = new int[sh.rank()];
+    dim_.resize(sh.rank());
+    std::vector<int> vec = sh.get();
+    dim_.swap(vec);
   }
 
   Shape(std::initializer_list<int> list) {
-    rank_ = list.size();
-    dim_ = new int[rank_];
-    size_t cnt = 0;
-    size_ = 1;
     for (auto item : list) {
       if (item <= 0)
         throw(std::invalid_argument("shape size should greater than 0"));
-      dim_[cnt++] = item;
-      size_ *= item;
+      dim_.emplace_back(item);
     }
   }
-  ~Shape() { delete[] dim_; }
-
   int operator[](int index) {
-    if (index < 0 || index > rank_)
+    if (index < 0 || index > rank())
       throw(std::out_of_range("invalid shape index"));
     return dim_[index];
   }
+
+  std::vector<int> get() const { return dim_; }
+
+  void set(std::vector<int> &&vec) { dim_.swap(vec); }
 
   friend std::ostream &operator<<(std::ostream &out, Shape &shape) {
     out << "Shape(";
@@ -96,13 +141,13 @@ class Shape {
     out << ")";
     return out;
   }
-  int rank() const { return rank_; }
-  int size() const { return size_; }
+  int rank() const { return dim_.size(); }
+  int size() const {
+    return std::accumulate(dim_.begin(), dim_.end(), 1, std::multiplies<int>());
+  }
 
  private:
-  size_t rank_;
-  size_t size_;
-  int *dim_;
+  std::vector<int> dim_;
 };
 
 /**
@@ -111,21 +156,14 @@ class Shape {
 template <typename T>
 class Tensor {
  public:
-  Tensor(Shape &&sh) {
-    shape_ = sh;
-    data_ = new T[sh.size() + 1];
-  }
-  Tensor(const std::initializer_list<std::initializer_list<T> > &list)
-      : shape_({(int)list.size(), (int)(list.begin()->size())}) {
-    data_ = new T[shape_.size() + 1];
-    size_t cnt = 0;
-    for (auto l1 : list) {
-      for (auto item : l1) {
-        data_[cnt++] = item;
-      }
-    }
-  }
-  ~Tensor() { delete[] data_; }
+  Tensor(Shape &&sh) : shape_(sh) { data_.resize(sh.size(), 0); }
+  // Tensor(const std::initializer_list<std::initializer_list<T> > &list);
+  Tensor(const nested_initializer_list_t<T, 0> list);
+  Tensor(const nested_initializer_list_t<T, 1> list);
+  Tensor(const nested_initializer_list_t<T, 2> list);
+  Tensor(const nested_initializer_list_t<T, 3> list);
+  Tensor(const nested_initializer_list_t<T, 4> list);
+  Tensor(const nested_initializer_list_t<T, 5> list);
 
   Shape &shape() { return shape_; }
   T &operator[](int index) {
@@ -134,21 +172,66 @@ class Tensor {
                               std::to_string(index)));
     return data_[index];
   }
+  auto begin() { return data_.begin(); }
+  auto end() { return data_.end(); }
 
   friend std::ostream &operator<<(std::ostream &out, Tensor &tensor) {
     out << "Tensor[\n";
-    auto dim2 = tensor.shape()[1];
-    for (auto i = 0; i < tensor.shape()[0]; i++) {
-      out << "  [";
-      std::copy(&tensor[dim2 * i], &tensor[dim2 * (i + 1)],
+    if (tensor.shape().rank() == 1) {
+      std::copy(tensor.begin(), tensor.end(),
                 std::ostream_iterator<T>(out, ", "));
-      out << "]\n";
+    } else if (tensor.shape().rank() == 2) {
+      auto dim2 = tensor.shape()[1];
+      for (auto i = 0; i < tensor.shape()[0]; i++) {
+        out << "  [";
+        std::copy(&tensor[dim2 * i], &tensor[dim2 * (i + 1)],
+                  std::ostream_iterator<T>(out, ", "));
+        out << "]\n";
+      }
     }
     out << "]";
     return out;
   }
 
  protected:
-  T *data_;
+  std::vector<T> data_;
   Shape shape_;
 };
+
+
+template <typename T>
+Tensor<T>::Tensor(const nested_initializer_list_t<T, 1> list) {
+  shape_ = deduce_shape<Shape>(list);
+  data_.resize(shape_.size(), 0);
+  nested_copy(data_.begin(),list); 
+}
+ 
+
+template <typename T>
+Tensor<T>::Tensor(const nested_initializer_list_t<T, 2> list) {
+  shape_ = deduce_shape<Shape>(list);
+  data_.resize(shape_.size(), 0);
+  nested_copy(data_.begin(),list); 
+}
+
+template <typename T>
+Tensor<T>::Tensor(const nested_initializer_list_t<T, 3> list) {
+  shape_ = deduce_shape<Shape>(list);
+  data_.resize(shape_.size(), 0);
+  nested_copy(data_.begin(),list); 
+}
+ 
+template <typename T>
+Tensor<T>::Tensor(const nested_initializer_list_t<T, 4> list) {
+  shape_ = deduce_shape<Shape>(list);
+  data_.resize(shape_.size(), 0);
+  nested_copy(data_.begin(),list); 
+}
+ 
+template <typename T>
+Tensor<T>::Tensor(const nested_initializer_list_t<T, 5> list) {
+  shape_ = deduce_shape<Shape>(list);
+  data_.resize(shape_.size(), 0);
+  nested_copy(data_.begin(),list); 
+}
+ 
