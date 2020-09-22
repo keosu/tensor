@@ -7,8 +7,7 @@ set(CMAKE_CXX_FLAGS  -std=c++17)
 
 include_directories("include") 
 
-add_executable(main "test/main.cpp")  
-add_executable(xt "test/xt.cpp")  
+add_executable(main "test/main.cpp")   
 
  
  
