@@ -44,6 +44,7 @@ int main(void) {
   std::cout << ze << std::endl;
    std::cout << one << std::endl;
    std::cout << eye << std::endl;
+   std::cout << eye({3, 3}) << std::endl;
  
   return 0;
 }

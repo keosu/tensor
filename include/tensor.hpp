@@ -177,6 +177,33 @@ class Tensor {
       index = shape_.size() + index;
     return data_[index];
   }
+  T &operator()(std::initializer_list<int> lst) { 
+    if(lst.size() != 1 && lst.size() != shape_.rank()) 
+      throw(std::invalid_argument("list size should be equal to 1 or the shape rank"));
+
+    if(lst.size() == 1) {
+      int index = *lst.begin();
+          if (index < -shape_.size() || index >= shape_.size())
+      throw(std::out_of_range("Tensor index out of range " +
+                              std::to_string(index)));
+      if(index < 0)
+        index = shape_.size() + index;
+      return data_[index];
+
+    } else {
+      int dim = 0;
+      int index = 0;
+      for (auto v = lst.begin(); v != lst.end(); v++) {
+        if(*v >= shape_[dim] || *v < -shape_[dim])
+          throw(std::out_of_range("Tensor index out of range "));
+        int tmp = *v > 0 ? *v : shape_[dim] + *v; 
+        index = index * ((dim == 0)? 0: shape_[dim - 1]) + tmp; 
+        dim++;
+      }
+      return data_[index];
+    }
+
+  }
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
 
