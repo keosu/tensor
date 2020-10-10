@@ -126,7 +126,7 @@ class Shape {
       dim_.emplace_back(item);
     }
   }
-  int operator[](int index) {
+  int& operator[](int index) {
     if (index < -rank() || index >= rank())
       throw(std::out_of_range("invalid shape index"));
     if(index < 0)
@@ -196,13 +196,28 @@ class Tensor {
       for (auto v = lst.begin(); v != lst.end(); v++) {
         if(*v >= shape_[dim] || *v < -shape_[dim])
           throw(std::out_of_range("Tensor index out of range "));
-        int tmp = *v > 0 ? *v : shape_[dim] + *v; 
-        index = index * ((dim == 0)? 0: shape_[dim - 1]) + tmp; 
+        int tmp = *v >= 0 ? *v : shape_[dim] + *v; 
+        index = index * ((dim == 0)? 0: shape_[dim]) + tmp; 
         dim++;
       }
       return data_[index];
     }
 
+  }
+
+  void add(T val) {  
+    for(auto& ele: data_)
+      ele += val;
+  }
+  void transpose() {
+    std::vector<T> vec(data_.size());
+    for(auto i=0;i<data_.size();i++) {
+      int x1 = i / shape_[0], y1 = i % shape_[0];
+      int idx = y1 * shape_[1] + x1;
+      vec[i] = data_[idx];
+    } 
+    std::copy(vec.begin(),vec.end(),data_.begin());
+    std::swap(shape_[0], shape_[1]); 
   }
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
@@ -290,10 +305,24 @@ Tensor<T> eye(int n) {
 
 template<typename T>
 Tensor<T> matmul(Tensor<T> & a, Tensor<T>& b, bool transpose = false) {
-//   static_assert(a.shape().rank() == 2 && b.shape().rank() == 2); 
-//   static_assert(a.shape()[1] == b.shape()[transpose?1:0]); 
+  if (a.shape().rank() != 2 || b.shape().rank() != 2)
+    throw(std::invalid_argument("Only matrix is supported"));
+  // if (a.shape()[1] != b.shape()[transpose?1:0]); 
+  //   throw(std::invalid_argument("Invalid matrix demension"));
 
-  Tensor<T> t{a.shape()[0], b.shape()[transpose?0:1]};
+  Shape sh{a.shape()[0], b.shape()[transpose?0:1]};
+  Tensor<T> t{sh};
+  for(auto i = 0;i<t.shape()[0];i++) {
+    for (auto j = 0; j < t.shape()[1]; j++) {
+      T sum{0};
+      for (auto k = 0; k < a.shape()[1]; k++) {
+        sum += a({i,k}) * b({k,j});
+      }
+      t({i,j}) = sum;
+      
+    }
+    
+  }
  
   //todo 
   return t;
