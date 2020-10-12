@@ -24,10 +24,10 @@
       ]
     },
     {
-      "name": "(gdb)xt",
+      "name": "(gdb)tmp",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/xt",
+      "program": "/tmp/test.out",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

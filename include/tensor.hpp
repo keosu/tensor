@@ -205,11 +205,37 @@ class Tensor {
 
   }
 
+  /**
+   * elementwise add
+   */ 
   void add(T val) {  
     for(auto& ele: data_)
       ele += val;
   }
+
+  /**
+   * elementwise multiply
+   */ 
+  void mul(T val) {  
+    for(auto& ele: data_)
+      ele *= val;
+  }
+
+  /**
+   * reshape tensor
+   */ 
+  void reshape(const Shape& sh) {
+    if(shape_.size() != sh.size())
+      throw(std::invalid_argument("invalid shape"));
+    shape_ = sh;
+  }
+
+  /**
+   * transpose a 2-d tensor
+   */ 
   void transpose() {
+    if(shape_.rank() != 2)
+      throw(std::invalid_argument("transpose only available for 2-d tensor"));
     std::vector<T> vec(data_.size());
     for(auto i=0;i<data_.size();i++) {
       int x1 = i / shape_[0], y1 = i % shape_[0];
@@ -295,6 +321,9 @@ Tensor<T> one(Shape&& sh) {
   return t;
 }
 
+/**
+ * generate identity matrix
+ */ 
 template<typename T>
 Tensor<T> eye(int n) {
   auto t = Tensor<T>(Shape{n,n});
@@ -303,6 +332,9 @@ Tensor<T> eye(int n) {
   return t;
 }
 
+/**
+ * matmul of two 2-d tensors
+ */ 
 template<typename T>
 Tensor<T> matmul(Tensor<T> & a, Tensor<T>& b, bool transpose = false) {
   if (a.shape().rank() != 2 || b.shape().rank() != 2)
@@ -318,13 +350,9 @@ Tensor<T> matmul(Tensor<T> & a, Tensor<T>& b, bool transpose = false) {
       for (auto k = 0; k < a.shape()[1]; k++) {
         sum += a({i,k}) * b({k,j});
       }
-      t({i,j}) = sum;
-      
-    }
-    
-  }
- 
-  //todo 
+      t({i,j}) = sum; 
+    } 
+  } 
   return t;
 }
 

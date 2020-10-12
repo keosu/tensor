@@ -101,7 +101,12 @@ void test() {
   std::cout << a << std::endl;
   a.transpose(); 
   std::cout << a << std::endl;
+  a.reshape(Shape{1,8}); 
+  std::cout << a << std::endl;
+  a.reshape(Shape{8, 1}); 
+  std::cout << a << std::endl;
 }
+
 int main(void) {
   // test_ele_accessment();
   // test_matmul();
