@@ -96,18 +96,19 @@ void test() {
       {5, 6, 7, 8}, 
   };
 
+  std::cout << (a + 1) * 3 << std::endl;
+  a.add(3).add(3); 
   std::cout << a << std::endl;
-  a.add(3); 
-  std::cout << a << std::endl;
-  a.transpose(); 
-  std::cout << a << std::endl;
-  a.reshape(Shape{1,8}); 
-  std::cout << a << std::endl;
-  a.reshape(Shape{8, 1}); 
-  std::cout << a << std::endl;
+  // a.transpose(); 
+  // std::cout << a << std::endl;
+  // a.reshape(Shape{1,8}); 
+  // std::cout << a << std::endl;
+  // a.reshape(Shape{8, 1}); 
+  // std::cout << a << std::endl;
 }
 
 int main(void) {
+  // test_innertype();
   // test_ele_accessment();
   // test_matmul();
   test();
