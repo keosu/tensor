@@ -99,6 +99,7 @@ void test() {
   std::cout << (a + 1) * 3 << std::endl;
   a.add(3).add(3); 
   std::cout << a << std::endl;
+  for(auto x:a) std::cout << x << std::endl;
   // a.transpose(); 
   // std::cout << a << std::endl;
   // a.reshape(Shape{1,8}); 

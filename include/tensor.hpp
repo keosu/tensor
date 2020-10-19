@@ -100,6 +100,93 @@ struct TreeNode {
   TreeNode(std::initializer_list<TreeNode> v_) : if_leaf(false), v(v_) {}
 };
 
+//-------------------------------------------------------------------
+// Tensor iterator
+//-------------------------------------------------------------------
+template <typename T>
+class TensorIterator : public std::iterator<std::random_access_iterator_tag, T,
+                                            ptrdiff_t, T *, T &> {
+ public:
+  TensorIterator(T *ptr = nullptr) { ptr = ptr; }
+  TensorIterator(const TensorIterator<T> &iter) = default;
+  ~TensorIterator() {}
+
+  TensorIterator<T> &operator=(const TensorIterator<T> &iter) = default;
+  TensorIterator<T> &operator=(T *ptr) {
+    ptr = ptr;
+    return (*this);
+  }
+
+  operator bool() const {
+    if (ptr)
+      return true;
+    else
+      return false;
+  }
+
+  bool operator==(const TensorIterator<T> &iter) const {
+    return (ptr == iter.getConstPtr());
+  }
+  bool operator!=(const TensorIterator<T> &iter) const {
+    return (ptr != iter.getConstPtr());
+  }
+
+  TensorIterator<T> &operator+=(const ptrdiff_t &movement) {
+    ptr += movement;
+    return (*this);
+  }
+  TensorIterator<T> &operator-=(const ptrdiff_t &movement) {
+    ptr -= movement;
+    return (*this);
+  }
+  TensorIterator<T> &operator++() {
+    ++ptr;
+    return (*this);
+  }
+  TensorIterator<T> &operator--() {
+    --ptr;
+    return (*this);
+  }
+  TensorIterator<T> operator++(int) {
+    auto temp(*this);
+    ++ptr;
+    return temp;
+  }
+  TensorIterator<T> operator--(int) {
+    auto temp(*this);
+    --ptr;
+    return temp;
+  }
+  TensorIterator<T> operator+(const ptrdiff_t &movement) {
+    auto oldPtr = ptr;
+    ptr += movement;
+    auto temp(*this);
+    ptr = oldPtr;
+    return temp;
+  }
+  TensorIterator<T> operator-(const ptrdiff_t &movement) {
+    auto oldPtr = ptr;
+    ptr -= movement;
+    auto temp(*this);
+    ptr = oldPtr;
+    return temp;
+  }
+
+  ptrdiff_t operator-(const TensorIterator<T> &iter) {
+    return std::distance(iter.getPtr(), this->getPtr());
+  }
+
+  T &operator*() { return *ptr; }
+  const T &operator*() const { return *ptr; }
+  T *operator->() { return ptr; }
+
+  T *getPtr() const { return ptr; }
+  const T *getConstPtr() const { return ptr; }
+
+ protected:
+  T *ptr;
+};
+
 /**
  * Shape class
  */

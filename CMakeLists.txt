@@ -9,5 +9,7 @@ include_directories("include")
 
 add_executable(main "test/main.cpp")   
 
+install(FILES ${CMAKE_SOURCE_DIR}/include/tensor.hpp DESTINATION include)
+
  
  
