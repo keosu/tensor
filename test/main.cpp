@@ -106,6 +106,9 @@ void test() {
   // std::cout << a << std::endl;
   // a.reshape(Shape{8, 1}); 
   // std::cout << a << std::endl;
+  Tensor<int> x{1,2,3},y{3,2,1};
+  auto z = st::dot(x,y);
+  std::cout <<  st::dot(x,y) << std::endl;
 }
 
 int main(void) {

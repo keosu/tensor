@@ -224,8 +224,9 @@ class Shape {
   void set(std::vector<int> &&vec) { dim_.swap(vec); }
 
   friend std::ostream &operator<<(std::ostream &out, Shape &shape) {
+    auto& dim = shape.dim_;
     out << "Shape(";
-    for (auto i = 0; i < shape.rank(); i++) out << shape[i] << ", ";
+    for (auto i = 0; i < dim.size(); i++) out << shape[i] << ", ";
     out << ")";
     return out;
   }
@@ -339,11 +340,13 @@ class Tensor {
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
 
-  friend std::ostream &operator<<(std::ostream &out, Tensor &tensor) {
-    auto shape = tensor.shape();
+  friend std::ostream &operator<<(std::ostream &out, const Tensor &t) {
+    auto& tensor = const_cast<Tensor&>(t);
+    auto& shape = tensor.shape_;
+    auto& data = tensor.data_;
     out << "Tensor: " << shape << " [\n";
-    auto p = tensor.begin();
-    while (p != tensor.end()) {
+    auto p = data.begin();
+    while (p != data.end()) {
       out << "  ";
       std::copy(p, p + shape[-1], std::ostream_iterator<T>(out, ", "));
       out << "\n";
@@ -409,6 +412,22 @@ Tensor<T> matmul(Tensor<T> &a, Tensor<T> &b, bool transpose = false) {
     }
   }
   return t;
+}
+
+/**
+ * Dot product of two arrays
+ * For 2-D arrays it is equivalent to matrix multiplication, and for 1-D arrays to inner product of vectors.
+ */
+template <typename T>
+Tensor<T> dot(Tensor<T> &a, Tensor<T> &b, bool transpose = false) {
+  if(a.shape().rank() == 1 && b.shape().rank() == 1) {
+    auto dotProduct = std::inner_product(a.begin(), a.end(), b.begin(), 0);
+    return Tensor<T>{dotProduct};
+  } else if(a.shape().rank() == 2 && b.shape().rank() == 2) {
+    return matmul(a,b);
+  } else {
+    throw(std::invalid_argument("Only 1-D or 2-D array are supported"));
+  }
 }
 
 };  // end of namespace st
