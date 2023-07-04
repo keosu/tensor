@@ -9,6 +9,47 @@
 #include <ostream>
 #include <vector>
 
+namespace yi {
+
+template <class T>
+class Tensor {
+ public:
+  Tensor(std::initializer_list<T> lst) {
+    shp_.emplace_back(lst.size());
+    data_.resize(lst.size());
+    std::copy(lst.begin(), lst.end(), data_.begin());
+  }
+  Tensor(std::initializer_list<Tensor<T>> lst) {
+    auto dim0 = lst.begin()->shape()[0];
+    for (auto t = lst.begin() + 1; t != lst.end(); t++) {
+      if (t->shape()[0] != dim0) {
+        throw("dim should be the same");
+      }
+    }
+    data_.resize(lst.begin()->size() * lst.size());
+    auto dst = data_.begin();
+    for (auto t = lst.begin(); t != lst.end(); t++) {
+      std::copy(t->cbegin(), t->cend(), dst);
+      dst += lst.begin()->size();
+    }
+
+    shp_.emplace_back(lst.size());
+    for (auto d : lst.begin()->shape()) shp_.emplace_back(d);
+  }
+
+  auto shape() const { return shp_; }
+  auto size() const { return std::accumulate(shp_.begin(), shp_.end(), 1, std::multiplies<int>()); }
+  auto begin() { return data_.begin(); }
+  auto end() { return data_.end(); }
+  auto cbegin() const { return data_.begin(); }
+  auto cend() const { return data_.end(); }
+
+ private:
+  std::vector<T> data_;
+  std::vector<int> shp_;
+};
+}  // namespace yi
+
 namespace st {
 
 /*********************
@@ -62,8 +103,7 @@ constexpr R deduce_shape(T t) {
  ***************************/
 template <class T, std::size_t I>
 struct nested_initializer_list {
-  using type =
-      std::initializer_list<typename nested_initializer_list<T, I - 1>::type>;
+  using type = std::initializer_list<typename nested_initializer_list<T, I - 1>::type>;
 };
 template <class T>
 struct nested_initializer_list<T, 0> {
@@ -104,8 +144,8 @@ struct TreeNode {
 // Tensor iterator
 //-------------------------------------------------------------------
 template <typename T>
-class TensorIterator : public std::iterator<std::random_access_iterator_tag, T,
-                                            ptrdiff_t, T *, T &> {
+class TensorIterator
+    : public std::iterator<std::random_access_iterator_tag, T, ptrdiff_t, T *, T &> {
  public:
   TensorIterator(T *ptr = nullptr) { ptr = ptr; }
   TensorIterator(const TensorIterator<T> &iter) = default;
@@ -124,12 +164,8 @@ class TensorIterator : public std::iterator<std::random_access_iterator_tag, T,
       return false;
   }
 
-  bool operator==(const TensorIterator<T> &iter) const {
-    return (ptr == iter.getConstPtr());
-  }
-  bool operator!=(const TensorIterator<T> &iter) const {
-    return (ptr != iter.getConstPtr());
-  }
+  bool operator==(const TensorIterator<T> &iter) const { return (ptr == iter.getConstPtr()); }
+  bool operator!=(const TensorIterator<T> &iter) const { return (ptr != iter.getConstPtr()); }
 
   TensorIterator<T> &operator+=(const ptrdiff_t &movement) {
     ptr += movement;
@@ -203,18 +239,17 @@ class Shape {
     dim_.resize(sh.rank());
     std::vector<int> vec = sh.get();
     dim_.swap(vec);
+    return *this;
   }
 
   Shape(std::initializer_list<int> list) {
     for (auto item : list) {
-      if (item <= 0)
-        throw(std::invalid_argument("shape size should greater than 0"));
+      if (item <= 0) throw(std::invalid_argument("shape size should greater than 0"));
       dim_.emplace_back(item);
     }
   }
   int &operator[](int index) {
-    if (index < -rank() || index >= rank())
-      throw(std::out_of_range("invalid shape index"));
+    if (index < -rank() || index >= rank()) throw(std::out_of_range("invalid shape index"));
     if (index < 0) index += rank();
     return dim_[index];
   }
@@ -224,16 +259,14 @@ class Shape {
   void set(std::vector<int> &&vec) { dim_.swap(vec); }
 
   friend std::ostream &operator<<(std::ostream &out, Shape &shape) {
-    auto& dim = shape.dim_;
+    auto &dim = shape.dim_;
     out << "Shape(";
     for (auto i = 0; i < dim.size(); i++) out << shape[i] << ", ";
     out << ")";
     return out;
   }
   int rank() const { return dim_.size(); }
-  int size() const {
-    return std::accumulate(dim_.begin(), dim_.end(), 1, std::multiplies<int>());
-  }
+  int size() const { return std::accumulate(dim_.begin(), dim_.end(), 1, std::multiplies<int>()); }
 
  private:
   std::vector<int> dim_;
@@ -264,21 +297,18 @@ class Tensor {
   Shape &shape() { return shape_; }
   T &operator[](int index) {
     if (index < -shape_.size() || index >= shape_.size())
-      throw(std::out_of_range("Tensor index out of range " +
-                              std::to_string(index)));
+      throw(std::out_of_range("Tensor index out of range " + std::to_string(index)));
     if (index < 0) index = shape_.size() + index;
     return data_[index];
   }
   T &operator()(std::initializer_list<int> lst) {
     if (lst.size() != 1 && lst.size() != shape_.rank())
-      throw(std::invalid_argument(
-          "list size should be equal to 1 or the shape rank"));
+      throw(std::invalid_argument("list size should be equal to 1 or the shape rank"));
 
     if (lst.size() == 1) {
       int index = *lst.begin();
       if (index < -shape_.size() || index >= shape_.size())
-        throw(std::out_of_range("Tensor index out of range " +
-                                std::to_string(index)));
+        throw(std::out_of_range("Tensor index out of range " + std::to_string(index)));
       if (index < 0) index = shape_.size() + index;
       return data_[index];
 
@@ -317,8 +347,7 @@ class Tensor {
    * reshape tensor
    */
   void reshape(const Shape &sh) {
-    if (shape_.size() != sh.size())
-      throw(std::invalid_argument("invalid shape"));
+    if (shape_.size() != sh.size()) throw(std::invalid_argument("invalid shape"));
     shape_ = sh;
   }
 
@@ -326,8 +355,7 @@ class Tensor {
    * transpose a 2-d tensor
    */
   void transpose() {
-    if (shape_.rank() != 2)
-      throw(std::invalid_argument("transpose only available for 2-d tensor"));
+    if (shape_.rank() != 2) throw(std::invalid_argument("transpose only available for 2-d tensor"));
     std::vector<T> vec(data_.size());
     for (auto i = 0; i < data_.size(); i++) {
       int x1 = i / shape_[0], y1 = i % shape_[0];
@@ -341,9 +369,9 @@ class Tensor {
   auto end() { return data_.end(); }
 
   friend std::ostream &operator<<(std::ostream &out, const Tensor &t) {
-    auto& tensor = const_cast<Tensor&>(t);
-    auto& shape = tensor.shape_;
-    auto& data = tensor.data_;
+    auto &tensor = const_cast<Tensor &>(t);
+    auto &shape = tensor.shape_;
+    auto &data = tensor.data_;
     out << "Tensor: " << shape << " [\n";
     auto p = data.begin();
     while (p != data.end()) {
@@ -416,15 +444,16 @@ Tensor<T> matmul(Tensor<T> &a, Tensor<T> &b, bool transpose = false) {
 
 /**
  * Dot product of two arrays
- * For 2-D arrays it is equivalent to matrix multiplication, and for 1-D arrays to inner product of vectors.
+ * For 2-D arrays it is equivalent to matrix multiplication, and for 1-D arrays to inner product of
+ * vectors.
  */
 template <typename T>
 Tensor<T> dot(Tensor<T> &a, Tensor<T> &b, bool transpose = false) {
-  if(a.shape().rank() == 1 && b.shape().rank() == 1) {
+  if (a.shape().rank() == 1 && b.shape().rank() == 1) {
     auto dotProduct = std::inner_product(a.begin(), a.end(), b.begin(), 0);
     return Tensor<T>{dotProduct};
-  } else if(a.shape().rank() == 2 && b.shape().rank() == 2) {
-    return matmul(a,b);
+  } else if (a.shape().rank() == 2 && b.shape().rank() == 2) {
+    return matmul(a, b);
   } else {
     throw(std::invalid_argument("Only 1-D or 2-D array are supported"));
   }
