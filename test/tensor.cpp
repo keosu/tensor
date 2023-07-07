@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-using namespace yi;
+using namespace ts;
 
 void test() {
   Tensor<int> aa = {1, 2, 3, 4, 5};
@@ -16,7 +16,8 @@ void test() {
   Tensor<int> b = {{
                        {1, 2},
                        {5, 6},
-                   },{
+                   },
+                   {
                        {1, 2},
                        {5, 6},
                    },
@@ -34,6 +35,16 @@ void test() {
   f(aa.shape());
   f(a.shape());
   f(b.shape());
+
+  std::cout << aa;
+  std::cout << a;
+  std::cout << a.add(1).mul(2);
+  std::cout << b;
+
+  auto t = Tensor<int>(Shape{3, 4, 5});
+  std::cout << t;
+  auto t2 = one<int>(Shape{3, 4, 5});
+  std::cout << t2;
 }
 
 int main(void) {
